@@ -1,0 +1,776 @@
+---
+title: "Cooperative Phenotype Reliability"
+author: "Nichole Breeland"
+date: "08/08/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen = 999)
+library(irr)
+library(dplyr)
+library(irr)
+library(lpSolve)
+```
+
+```{r, include = FALSE}
+
+#import cooperative understanding IP df
+IP.df <- read.csv("Reliability.Datasets/CU_CAAT_Rel.csv", 
+                  stringsAsFactors = FALSE)
+IP.df[IP.df == 999] <- 0
+IP.df[IP.df == 888] <- 0
+
+
+#import cooperative ability df
+CAAT.df <- read.csv("Reliability.Datasets/P4_CAAT_Rel_Combined.csv", 
+                    stringsAsFactors = FALSE)
+
+#import cooperative ability LATENCY df
+Lat.df <- read.csv("Reliability.Datasets/P4_CAAT_LatencyOnly_NAremoved.csv", 
+                    stringsAsFactors = FALSE)
+#Calculate latency reliability variables
+Lat.df$Lat_PR_T1 <- rowMeans(subset(Lat.df, select = c("LatA1_PR_T1_P4", "LatA2_PR_T1_P4")), na.rm = TRUE)
+Lat.df$Lat_PR_T2 <- rowMeans(subset(Lat.df, select = c("LatA1_PR_T2_P4", "LatA2_PR_T2_P4")), na.rm = TRUE)
+Lat.df$Lat_CT_T1 <- rowMeans(subset(Lat.df, select = c("LatA1_CT_T1_P4", "LatA2_CT_T1_P4")), na.rm = TRUE)
+Lat.df$Lat_CT_T2 <- rowMeans(subset(Lat.df, select = c("LatA1_CT_T2_P4", "LatA2_CT_T1_P4")), na.rm = TRUE)
+Lat.df$Lat_PR_T1_Rel <- rowMeans(subset(Lat.df, select = c("LatA1_PR_T1_P4_Rel", "LatA2_PR_T1_P4_Rel")), na.rm = TRUE)
+Lat.df$Lat_PR_T2_Rel <- rowMeans(subset(Lat.df, select = c("LatA1_PR_T2_P4_Rel", "LatA2_PR_T2_P4_Rel")), na.rm = TRUE)
+Lat.df$Lat_CT_T1_Rel <- rowMeans(subset(Lat.df, select = c("LatA1_CT_T1_P4_Rel", "LatA2_CT_T1_P4_Rel")), na.rm = TRUE)
+Lat.df$Lat_CT_T2_Rel <- rowMeans(subset(Lat.df, select = c("LatA1_CT_T2_P4_Rel", "LatA2_CT_T1_P4_Rel")), na.rm = TRUE)
+Lat.df[is.na(Lat.df)] <- 999
+
+#import cooperative motivation - stack up df
+SAT.df <- read.csv("Reliability.Datasets/CooperativeMotivation_StackUptask_P4_Reliability_Masterfile.csv", 
+                   stringsAsFactors = FALSE)
+SAT.df[SAT.df == 999] <- 0
+SAT.df[SAT.df == 777] <- 0
+
+#import cooperative interaction quality df
+CIQ.df <- read.csv("Reliability.Datasets/P4_CAAT_SocialContext_Engagement_Codes.csv", 
+                   stringsAsFactors = FALSE)
+CIQ.df[CIQ.df == 999] <- 0
+CIQ.df[CIQ.df == 888] <- 0
+```
+
+## Cooperative Understanding Reliability
+```{r CU IP subsets, include = FALSE}
+#PRT IP Reeng subset 
+prt.ip.reeng <- subset(IP.df, select = c("Re.Eng_PRT_P4", "ReEngage_PRT_REL"))
+#PRT IP Reeng subset 
+crt1.ip.reeng <- subset(IP.df, select = c("Re.Eng_CT_P4", "ReEngage_CT_REL"))
+#PRT IP Reeng subset 
+crt2.ip.reeng <- subset(IP.df, select = c("Re.Eng_FT_P4", "ReEngage_FT_REL"))
+```
+  
+### Anticipation
+
+```{r Anti P4 rel}
+
+```
+
+### Reengagement behaviours PRT
+
+```{r PRT IP Reeng rel}
+#PRT IP Reengagement 
+icc(prt.ip.reeng, model="twoway", type="consistency", unit = "average")
+```
+
+### Reengagement behaviours CRT-1
+
+```{r CRT1 IP Reeng rel}
+#PRT IP Reengagement 
+icc(crt1.ip.reeng, model="twoway", type="consistency", unit = "average")
+```
+
+### Reengagement behaviours CRT-2
+
+```{r CRT2 IP Reeng rel}
+#PRT IP Reengagement 
+icc(crt2.ip.reeng, model="twoway", type="consistency", unit = "average")
+```
+
+## Cooperative Ability Reliability  
+  
+### Parallel Roles Task
+  
+```{r PRT CAAT subset, include = FALSE}
+#PRT SC subset T1
+prt.sc.1 <- subset(CAAT.df, select = c("Rel_SC_R1_PR_P4", "SC_R1_PR_P4"))
+prt.sc.1[prt.sc.1 == 999] <- 0
+prt.sc.1[prt.sc.1 == 8888] <- 0
+
+#PRT SC subset T2
+prt.sc.2 <- subset(CAAT.df, select = c("Rel_SC_R2_PR_P4", "SC_R2_PR_P4"))
+prt.sc.2[prt.sc.2 == 999] <- 0
+prt.sc.2[prt.sc.2 == 8888] <- 0
+
+#PRT Succ subset T1
+prt.succ.1 <- subset(CAAT.df, select = c("Rel_Succ_R1_PR_P4", "Succ_R1_PR_P4"))
+prt.succ.1[prt.succ.1 == 999] <- 0
+prt.succ.1[prt.succ.1 == 8888] <- 0
+
+#PRT Succ subset T2
+prt.succ.2 <- subset(CAAT.df, select = c("Rel_Succ_R2_PR_P4", "Succ_R2_PR_P4"))
+prt.succ.2[prt.succ.2 == 999] <- 0
+prt.succ.2[prt.succ.2 == 8888] <- 0
+
+#PRT Lat subset T1 + T2
+prt.lat.1 <- subset(Lat.df, select = c("Lat_PR_T1_Rel", "Lat_PR_T1"))
+prt.lat.2 <- subset(Lat.df, select = c("Lat_PR_T2_Rel", "Lat_PR_T2"))
+
+```
+
+```{r PRT CAAT rel}
+#PRT sc T1
+icc(prt.sc.1, model="twoway", type="consistency", unit = "average")
+#PRT sc T2
+icc(prt.sc.2, model="twoway", type="consistency", unit = "average")
+
+#PRT succ T1
+icc(prt.succ.1, model="twoway", type="consistency", unit = "average")
+#PRT succ T2
+icc(prt.succ.2, model="twoway", type="consistency", unit = "average")
+
+#PRT lat T1
+agree(prt.lat.1, tolerance = .16)
+#PRT lat T2
+agree(prt.lat.2, tolerance = .16)
+
+```
+
+### S Tube Complementary Roles Task (CRT-1)
+
+```{r CRT1 CAAT subset, include = FALSE}
+#CRT1 SC subset T1
+crt1.sc.1 <- subset(CAAT.df, select = c("Rel_SC_R1_CT_P4", "SC_R1_CT_P4"))
+crt1.sc.1[crt1.sc.1 == 999] <- 0
+crt1.sc.1[crt1.sc.1 == 8888] <- 0
+
+#CRT1 SC subset T2
+crt1.sc.2 <- subset(CAAT.df, select = c("Rel_SC_R2_CT_P4", "SC_R2_CT_P4"))
+crt1.sc.2[crt1.sc.2 == 999] <- 0
+crt1.sc.2[crt1.sc.2 == 8888] <- 0
+
+#CRT1 Succ subset T1
+crt1.succ.1 <- subset(CAAT.df, select = c("Rel_Succ_R1_CT_P4", "Succ_R1_CT_P4"))
+crt1.succ.1[crt1.succ.1 == 999] <- 0
+crt1.succ.1[crt1.succ.1 == 8888] <- 0
+
+#CRT1 Succ subset T2
+crt1.succ.2 <- subset(CAAT.df, select = c("Rel_Succ_R2_CT_P4", "Succ_R2_CT_P4"))
+crt1.succ.2[crt1.succ.2 == 999] <- 0
+crt1.succ.2[crt1.succ.2 == 8888] <- 0
+
+#CRT1 Lat subset T1 + T2
+crt1.lat.1 <- subset(Lat.df, select = c("Lat_CT_T1_Rel", "Lat_CT_T1"))
+crt1.lat.2 <- subset(Lat.df, select = c("Lat_CT_T2_Rel", "Lat_CT_T2"))
+
+
+
+```
+
+```{r CRT1 CAAT rel}
+#CRT1 sc T1
+icc(crt1.sc.1, model="twoway", type="consistency", unit = "average")
+#CRT1 sc T2
+icc(crt1.sc.2, model="twoway", type="consistency", unit = "average")
+
+#CRT1 succ T1
+icc(crt1.succ.1, model="twoway", type="consistency", unit = "average")
+#CRT1 succ T2
+icc(crt1.succ.2, model="twoway", type="consistency", unit = "average")
+
+#CRT1 lat T1
+agree(crt1.lat.1, tolerance = .16)
+#CRT1 lat T2
+agree(crt1.lat.2, tolerance = .16)
+```
+
+### Frog Complementary Roles Task (CRT-2)
+
+```{r CRT2 CAAT subset, include = FALSE}
+#CRT2 SC subset T1
+crt2.sc.1 <- subset(CAAT.df, select = c("Rel_SC_R1_FT_P4", "SC_R1_FT_P4"))
+crt2.sc.1[crt2.sc.1 == 999] <- 0
+crt2.sc.1[crt2.sc.1 == 8888] <- 0
+
+#CRT2 SC subset T2
+crt2.sc.2 <- subset(CAAT.df, select = c("Rel_SC_R2_FT_P4", "SC_R2_FT_P4"))
+crt2.sc.2[crt2.sc.2 == 999] <- 0
+crt2.sc.2[crt2.sc.2 == 8888] <- 0
+
+#CRT2 Succ subset T1
+crt2.succ.1 <- subset(CAAT.df, select = c("Rel_Succ_R1_FT_P4", "Succ_R1_FT_P4"))
+crt2.succ.1[crt2.succ.1 == 999] <- 0
+crt2.succ.1[crt2.succ.1 == 8888] <- 0
+
+#CRT2 Succ subset T2
+crt2.succ.2 <- subset(CAAT.df, select = c("Rel_Succ_R2_FT_P4", "Succ_R2_FT_P4"))
+crt2.succ.2[crt2.succ.2 == 999] <- 0
+crt2.succ.2[crt2.succ.2 == 8888] <- 0
+
+#CRT2 T1 Action 1
+crt2.lat.a1.t1 <- subset(Lat.df, select = c("LatA1_FT_T1_P4", "LatA1_FT_T1_P4_Rel"))
+#CRT2 T1 Action 2
+crt2.lat.a2.t1 <- subset(Lat.df, select = c("LatA2_FT_T1_P4", "LatA2_FT_T1_P4_Rel"))
+#CRT2 T2 Action 1
+crt2.lat.a1.t2 <- subset(Lat.df, select = c("LatA1_FT_T2_P4", "LatA1_FT_T2_P4_Rel"))
+#CRT2 T2 Action 2
+crt2.lat.a2.t2 <- subset(Lat.df, select = c("LatA2_FT_T2_P4", "LatA2_FT_T2_P4_Rel"))
+
+```
+
+```{r CRT2 CAAT rel}
+#CRT2 sc T1
+icc(crt2.sc.1, model="twoway", type="consistency", unit = "average")
+#CRT2 sc T2
+icc(crt2.sc.2, model="twoway", type="consistency", unit = "average")
+
+#CRT2 succ T1
+icc(crt2.succ.1, model="twoway", type="consistency", unit = "average")
+#CRT2 succ T2
+icc(crt2.succ.2, model="twoway", type="consistency", unit = "average")
+
+#CRT2 lat T1 action 1
+agree(crt2.lat.a1.t1, tolerance = .16)
+#CRT2 lat T1 action 2
+agree(crt2.lat.a2.t1, tolerance = .16)
+#CRT2 lat T2 action 1
+agree(crt2.lat.a1.t2, tolerance = .16)
+#CRT2 lat T2 action 2
+agree(crt2.lat.a2.t2, tolerance = .16)
+```
+
+## Cooperative Motivation Reliability
+*Waiting behaviours will be a score of the proportion the time the child engaged in passive behaviours and did not engage in any other coded behaviours (disengagement, individual attempts, reengagement). This is to account for passive engagement which occured when the child was not physically touching the apparatus (e.g., child was looking to experimenter but not touching anything). Reliability is thus calculated on the raw scores.*
+
+```{r cooperative motivation subsets, include = FALSE}
+#stack and topple subset
+sat.pc <- subset(SAT.df, select = c("CoMotiv_p4", "REL_CoMotiv_p4"))
+
+#PRT IP Indiv Attempt
+prt.ip.indiv <- subset(IP.df, select = c("IndAttm_PRT_P4", "IndAtt_PRT_REL"))
+#PRT IP Diseng Attempt
+prt.ip.diseng <- subset(IP.df, select = c("Disengagement_PRT_P4", "Disengage_PRT_P4"))
+#PRT IP Passive Attempt
+prt.ip.passive <- subset(IP.df, select = c("Passive_PRT_P4", "Passive_PRT_REL"))
+
+#CRT1 IP Indiv Attempt
+crt1.ip.indiv <- subset(IP.df, select = c("IndAttm_CT_P4", "IndAtt_CT_REL"))
+#CRT1 IP Diseng Attempt
+crt1.ip.diseng <- subset(IP.df, select = c("Disengagement_CT_P4", "Disengage_CT_P4"))
+#CRT1 IP Passive Attempt
+crt1.ip.passive <- subset(IP.df, select = c("Passive_CT_P4", "Passive_CT_REL"))
+
+#CRT2 IP Indiv Attempt
+crt2.ip.indiv <- subset(IP.df, select = c("IndAttm_FT_P4", "IndAtt_FT_REL"))
+#CRT2 IP Diseng Attempt
+crt2.ip.diseng <- subset(IP.df, select = c("Disengagement_FT_P4", "Disengage_FT_P4"))
+#CRT2 IP Passive Attempt
+crt2.ip.passive <- subset(IP.df, select = c("Passive_FT_P4", "Passive_FT_REL"))
+
+```
+
+### Stack and topple partner choice
+
+```{r SAT kappa}
+icc(sat.pc, model="twoway", type="consistency", unit = "average")
+```
+
+### Waiting Behaviours PRT
+
+```{r waiting PRT}
+
+#Indiv
+icc(prt.ip.indiv, model="twoway", type="consistency", unit = "average")
+
+#Diseng
+icc(prt.ip.diseng, model="twoway", type="consistency", unit = "average")
+
+#Passive
+icc(prt.ip.passive, model="twoway", type="consistency", unit = "average")
+
+```
+
+### Waiting Behaviours CRT-1
+
+```{r waiting CRT1}
+
+#Indiv
+icc(crt1.ip.indiv, model="twoway", type="consistency", unit = "average")
+
+#Diseng
+icc(crt1.ip.diseng, model="twoway", type="consistency", unit = "average")
+
+#Passive
+icc(crt1.ip.passive, model="twoway", type="consistency", unit = "average")
+
+```
+
+### Waiting Behaviours CRT-2
+
+```{r waiting CRT2}
+
+#Indiv
+icc(crt2.ip.indiv, model="twoway", type="consistency", unit = "average")
+
+#Diseng
+icc(crt2.ip.diseng, model="twoway", type="consistency", unit = "average")
+
+#Passive
+icc(crt2.ip.passive, model="twoway", type="consistency", unit = "average")
+
+```
+
+## Cooperative Interaction Quality
+  
+```{r datafile set up, include = FALSE}
+#Coder category as numeric
+CIQ.df$P4_SocialContext_CoderCategeory[CIQ.df$Coders == "AO_BC"] <- 1
+CIQ.df$P4_SocialContext_CoderCategeory[CIQ.df$Coders == "AO_NB"] <- 2
+CIQ.df$P4_SocialContext_CoderCategeory[CIQ.df$Coders == "NB_BC"] <- 3
+CIQ.df$P4_SocialContext_Coders_CT[CIQ.df$Coders_CT == "NB_BC"] <- 3
+
+
+#subsests for coder pairs
+sc.df_AO_BC <- CIQ.df[which(CIQ.df$P4_SocialContext_CoderCategeory == 1),]
+
+sc.df_AO_NB <- CIQ.df[which(CIQ.df$P4_SocialContext_CoderCategeory == 2),]
+
+sc.df_NB_BC <- CIQ.df[which(CIQ.df$P4_SocialContext_CoderCategeory == 3),]
+ct.df_NB_BC <- CIQ.df[which(CIQ.df$P4_SocialContext_Coders_CT == 3),]
+ct.df_NB_BC <- subset(ct.df_NB_BC, 
+                      select = c("CT_T1_Afill_NB", 
+                                 "CT_T1_Antag_NB",
+                                 "CT_T1_Eng_NB",
+                                 "CT_T1_JCE_NB",
+                                 "CT_T1_Afill_BC", 
+                                 "CT_T1_Antag_BC",
+                                 "CT_T2_Afill_NB", 
+                                 "CT_T2_Antag_NB", 
+                                 "CT_T2_Afill_BC", 
+                                 "CT_T2_Antag_BC",
+                                 "CT_T2_Eng_BC",
+                                 "CT_T2_JCE_BC"))
+
+library(dplyr)
+sc.df_NB_BC<- right_join(sc.df_NB_BC, ct.df_NB_BC, 
+                         by = NULL, type = "right", match = "all")
+
+
+#PRT combine all rater pairs
+
+#time 1
+t1.prt.sc.df_AO_BC_afill <- subset(sc.df_AO_BC, select = c("PR_T1_Afill_AO",  "PR_T1_Afill_BC"))
+names(t1.prt.sc.df_AO_BC_afill)[names(t1.prt.sc.df_AO_BC_afill) == "PR_T1_Afill_AO"] <- "A1"
+names(t1.prt.sc.df_AO_BC_afill)[names(t1.prt.sc.df_AO_BC_afill) == "PR_T1_Afill_BC"] <- "A2"
+
+t1.prt.sc.df_AO_NB_afill <- subset(sc.df_AO_NB, select = c("PR_T1_Afill_AO",  "PR_T1_Afill_NB"))
+names(t1.prt.sc.df_AO_NB_afill)[names(t1.prt.sc.df_AO_NB_afill) == "PR_T1_Afill_AO"] <- "A1"
+names(t1.prt.sc.df_AO_NB_afill)[names(t1.prt.sc.df_AO_NB_afill) == "PR_T1_Afill_NB"] <- "A2"
+
+t1.prt.sc.df_NB_BC_afill <- subset(sc.df_NB_BC, select = c("PR_T1_Afill_NB",  "PR_T1_Afill_BC"))
+names(t1.prt.sc.df_NB_BC_afill)[names(t1.prt.sc.df_NB_BC_afill) == "PR_T1_Afill_NB"] <- "A1"
+names(t1.prt.sc.df_NB_BC_afill)[names(t1.prt.sc.df_NB_BC_afill) == "PR_T1_Afill_BC"] <- "A2"
+
+t1.PRT.Afill.df <- rbind(t1.prt.sc.df_AO_BC_afill, t1.prt.sc.df_AO_NB_afill, t1.prt.sc.df_NB_BC_afill)
+t1.PRT.Afill.df <- na.omit(t1.PRT.Afill.df)
+
+#time 2
+t2.prt.sc.df_AO_BC_afill <- subset(sc.df_AO_BC, select = c("PR_T2_Afill_AO",  "PR_T2_Afill_BC"))
+names(t2.prt.sc.df_AO_BC_afill)[names(t2.prt.sc.df_AO_BC_afill) == "PR_T2_Afill_AO"] <- "A1"
+names(t2.prt.sc.df_AO_BC_afill)[names(t2.prt.sc.df_AO_BC_afill) == "PR_T2_Afill_BC"] <- "A2"
+
+t2.prt.sc.df_AO_NB_afill <- subset(sc.df_AO_NB, select = c("PR_T2_Afill_AO",  "PR_T2_Afill_NB"))
+names(t2.prt.sc.df_AO_NB_afill)[names(t2.prt.sc.df_AO_NB_afill) == "PR_T2_Afill_AO"] <- "A1"
+names(t2.prt.sc.df_AO_NB_afill)[names(t2.prt.sc.df_AO_NB_afill) == "PR_T2_Afill_NB"] <- "A2"
+
+t2.prt.sc.df_NB_BC_afill <- subset(sc.df_NB_BC, select = c("PR_T2_Afill_NB",  "PR_T2_Afill_BC"))
+names(t2.prt.sc.df_NB_BC_afill)[names(t2.prt.sc.df_NB_BC_afill) == "PR_T2_Afill_NB"] <- "A1"
+names(t2.prt.sc.df_NB_BC_afill)[names(t2.prt.sc.df_NB_BC_afill) == "PR_T2_Afill_BC"] <- "A2"
+
+t2.PRT.Afill.df <- rbind(t2.prt.sc.df_AO_BC_afill, t2.prt.sc.df_AO_NB_afill, t2.prt.sc.df_NB_BC_afill)
+t2.PRT.Afill.df <- na.omit(t2.PRT.Afill.df)
+
+#time 1
+t1.prt.sc.df_AO_BC_antag <- subset(sc.df_AO_BC, select = c("PR_T1_Antag_AO",  "PR_T1_Antag_BC"))
+names(t1.prt.sc.df_AO_BC_antag)[names(t1.prt.sc.df_AO_BC_antag) == "PR_T1_Antag_AO"] <- "A1"
+names(t1.prt.sc.df_AO_BC_antag)[names(t1.prt.sc.df_AO_BC_antag) == "PR_T1_Antag_BC"] <- "A2"
+
+t1.prt.sc.df_AO_NB_antag <- subset(sc.df_AO_NB, select = c("PR_T1_Antag_AO",  "PR_T1_Antag_NB"))
+names(t1.prt.sc.df_AO_NB_antag)[names(t1.prt.sc.df_AO_NB_antag) == "PR_T1_Antag_AO"] <- "A1"
+names(t1.prt.sc.df_AO_NB_antag)[names(t1.prt.sc.df_AO_NB_antag) == "PR_T1_Antag_NB"] <- "A2"
+
+t1.prt.sc.df_NB_BC_antag <- subset(sc.df_NB_BC, select = c("PR_T1_Antag_NB",  "PR_T1_Antag_BC"))
+names(t1.prt.sc.df_NB_BC_antag)[names(t1.prt.sc.df_NB_BC_antag) == "PR_T1_Antag_NB"] <- "A1"
+names(t1.prt.sc.df_NB_BC_antag)[names(t1.prt.sc.df_NB_BC_antag) == "PR_T1_Antag_BC"] <- "A2"
+
+t1.PRT.Antag.df <- rbind(t1.prt.sc.df_AO_BC_antag, t1.prt.sc.df_AO_NB_antag, t1.prt.sc.df_NB_BC_antag)
+t1.PRT.Antag.df <- na.omit(t1.PRT.Antag.df)
+
+#time 2
+t2.prt.sc.df_AO_BC_antag <- subset(sc.df_AO_BC, select = c("PR_T2_Antag_AO",  "PR_T2_Antag_BC"))
+names(t2.prt.sc.df_AO_BC_antag)[names(t2.prt.sc.df_AO_BC_antag) == "PR_T2_Antag_AO"] <- "A1"
+names(t2.prt.sc.df_AO_BC_antag)[names(t2.prt.sc.df_AO_BC_antag) == "PR_T2_Antag_BC"] <- "A2"
+
+t2.prt.sc.df_AO_NB_antag <- subset(sc.df_AO_NB, select = c("PR_T2_Antag_AO",  "PR_T2_Antag_NB"))
+names(t2.prt.sc.df_AO_NB_antag)[names(t2.prt.sc.df_AO_NB_antag) == "PR_T2_Antag_AO"] <- "A1"
+names(t2.prt.sc.df_AO_NB_antag)[names(t2.prt.sc.df_AO_NB_antag) == "PR_T2_Antag_NB"] <- "A2"
+
+t2.prt.sc.df_NB_BC_antag <- subset(sc.df_NB_BC, select = c("PR_T2_Antag_NB",  "PR_T2_Antag_BC"))
+names(t2.prt.sc.df_NB_BC_antag)[names(t2.prt.sc.df_NB_BC_antag) == "PR_T2_Antag_NB"] <- "A1"
+names(t2.prt.sc.df_NB_BC_antag)[names(t2.prt.sc.df_NB_BC_antag) == "PR_T2_Antag_BC"] <- "A2"
+
+t2.PRT.Antag.df <- rbind(t2.prt.sc.df_AO_BC_antag, t2.prt.sc.df_AO_NB_antag, t2.prt.sc.df_NB_BC_antag)
+t2.PRT.Antag.df <- na.omit(t2.PRT.Antag.df)
+
+#time 1
+t1.prt.sc.df_AO_BC_eng <- subset(sc.df_AO_BC, select = c("PR_T1_Eng_AO",  "PR_T1_Eng_BC"))
+names(t1.prt.sc.df_AO_BC_eng)[names(t1.prt.sc.df_AO_BC_eng) == "PR_T1_Eng_AO"] <- "A1"
+names(t1.prt.sc.df_AO_BC_eng)[names(t1.prt.sc.df_AO_BC_eng) == "PR_T1_Eng_BC"] <- "A2"
+
+t1.prt.sc.df_AO_NB_eng <- subset(sc.df_AO_NB, select = c("PR_T1_Eng_AO",  "PR_T1_Eng_NB"))
+names(t1.prt.sc.df_AO_NB_eng)[names(t1.prt.sc.df_AO_NB_eng) == "PR_T1_Eng_AO"] <- "A1"
+names(t1.prt.sc.df_AO_NB_eng)[names(t1.prt.sc.df_AO_NB_eng) == "PR_T1_Eng_NB"] <- "A2"
+
+t1.prt.sc.df_NB_BC_eng <- subset(sc.df_NB_BC, select = c("PR_T1_Eng_NB",  "PR_T1_Eng_BC"))
+names(t1.prt.sc.df_NB_BC_eng)[names(t1.prt.sc.df_NB_BC_eng) == "PR_T1_Eng_NB"] <- "A1"
+names(t1.prt.sc.df_NB_BC_eng)[names(t1.prt.sc.df_NB_BC_eng) == "PR_T1_Eng_BC"] <- "A2"
+
+t1.PRT.Eng.df <- rbind(t1.prt.sc.df_AO_BC_eng, t1.prt.sc.df_AO_NB_eng, t1.prt.sc.df_NB_BC_eng)
+t1.PRT.Eng.df <- na.omit(t1.PRT.Eng.df)
+
+#time 2
+t2.prt.sc.df_AO_BC_eng <- subset(sc.df_AO_BC, select = c("PR_T2_Eng_AO",  "PR_T2_Eng_BC"))
+names(t2.prt.sc.df_AO_BC_eng)[names(t2.prt.sc.df_AO_BC_eng) == "PR_T2_Eng_AO"] <- "A1"
+names(t2.prt.sc.df_AO_BC_eng)[names(t2.prt.sc.df_AO_BC_eng) == "PR_T2_Eng_BC"] <- "A2"
+
+t2.prt.sc.df_AO_NB_eng <- subset(sc.df_AO_NB, select = c("PR_T2_Eng_AO",  "PR_T2_Eng_NB"))
+names(t2.prt.sc.df_AO_NB_eng)[names(t2.prt.sc.df_AO_NB_eng) == "PR_T2_Eng_AO"] <- "A1"
+names(t2.prt.sc.df_AO_NB_eng)[names(t2.prt.sc.df_AO_NB_eng) == "PR_T2_Eng_NB"] <- "A2"
+
+t2.prt.sc.df_NB_BC_eng <- subset(sc.df_NB_BC, select = c("PR_T2_Eng_NB",  "PR_T2_Eng_BC"))
+names(t2.prt.sc.df_NB_BC_eng)[names(t2.prt.sc.df_NB_BC_eng) == "PR_T2_Eng_NB"] <- "A1"
+names(t2.prt.sc.df_NB_BC_eng)[names(t2.prt.sc.df_NB_BC_eng) == "PR_T2_Eng_BC"] <- "A2"
+
+t2.PRT.Eng.df <- rbind(t2.prt.sc.df_AO_BC_eng, t2.prt.sc.df_AO_NB_eng, t2.prt.sc.df_NB_BC_eng)
+t2.PRT.Eng.df <- na.omit(t2.PRT.Eng.df)
+
+#time 1
+t1.prt.sc.df_AO_BC_jce <- subset(sc.df_AO_BC, select = c("PR_T1_JCE_AO",  "PR_T1_JCE_BC"))
+names(t1.prt.sc.df_AO_BC_jce)[names(t1.prt.sc.df_AO_BC_jce) == "PR_T1_JCE_AO"] <- "A1"
+names(t1.prt.sc.df_AO_BC_jce)[names(t1.prt.sc.df_AO_BC_jce) == "PR_T1_JCE_BC"] <- "A2"
+
+t1.prt.sc.df_AO_NB_jce <- subset(sc.df_AO_NB, select = c("PR_T1_JCE_AO",  "PR_T1_JCE_NB"))
+names(t1.prt.sc.df_AO_NB_jce)[names(t1.prt.sc.df_AO_NB_jce) == "PR_T1_JCE_AO"] <- "A1"
+names(t1.prt.sc.df_AO_NB_jce)[names(t1.prt.sc.df_AO_NB_jce) == "PR_T1_JCE_NB"] <- "A2"
+
+t1.prt.sc.df_NB_BC_jce <- subset(sc.df_NB_BC, select = c("PR_T1_JCE_NB",  "PR_T1_JCE_BC"))
+names(t1.prt.sc.df_NB_BC_jce)[names(t1.prt.sc.df_NB_BC_jce) == "PR_T1_JCE_NB"] <- "A1"
+names(t1.prt.sc.df_NB_BC_jce)[names(t1.prt.sc.df_NB_BC_jce) == "PR_T1_JCE_BC"] <- "A2"
+
+t1.PRT.JCE.df <- rbind(t1.prt.sc.df_AO_BC_jce, t1.prt.sc.df_AO_NB_jce, t1.prt.sc.df_NB_BC_jce)
+t1.PRT.JCE.df <- na.omit(t1.PRT.JCE.df)
+
+#time 2
+t2.prt.sc.df_AO_BC_jce <- subset(sc.df_AO_BC, select = c("PR_T2_JCE_AO",  "PR_T2_JCE_BC"))
+names(t2.prt.sc.df_AO_BC_jce)[names(t2.prt.sc.df_AO_BC_jce) == "PR_T2_JCE_AO"] <- "A1"
+names(t2.prt.sc.df_AO_BC_jce)[names(t2.prt.sc.df_AO_BC_jce) == "PR_T2_JCE_BC"] <- "A2"
+
+t2.prt.sc.df_AO_NB_jce <- subset(sc.df_AO_NB, select = c("PR_T2_JCE_AO",  "PR_T2_JCE_NB"))
+names(t2.prt.sc.df_AO_NB_jce)[names(t2.prt.sc.df_AO_NB_jce) == "PR_T2_JCE_AO"] <- "A1"
+names(t2.prt.sc.df_AO_NB_jce)[names(t2.prt.sc.df_AO_NB_jce) == "PR_T2_JCE_NB"] <- "A2"
+
+t2.prt.sc.df_NB_BC_jce <- subset(sc.df_NB_BC, select = c("PR_T2_JCE_NB",  "PR_T2_JCE_BC"))
+names(t2.prt.sc.df_NB_BC_jce)[names(t2.prt.sc.df_NB_BC_jce) == "PR_T2_JCE_NB"] <- "A1"
+names(t2.prt.sc.df_NB_BC_jce)[names(t2.prt.sc.df_NB_BC_jce) == "PR_T2_JCE_BC"] <- "A2"
+
+t2.PRT.JCE.df <- rbind(t2.prt.sc.df_AO_BC_jce, t2.prt.sc.df_AO_NB_jce, t2.prt.sc.df_NB_BC_jce)
+t2.PRT.JCE.df <- na.omit(t2.PRT.JCE.df)
+
+#CRT1 combine all rater pairs
+
+#time 1
+t1.crt1.sc.df_NB_BC_afill <- subset(sc.df_NB_BC, select = c("CT_T1_Afill_NB",  "CT_T1_Afill_BC"))
+names(t1.crt1.sc.df_NB_BC_afill)[names(t1.crt1.sc.df_NB_BC_afill) == "CT_T1_Afill_NB"] <- "A1"
+names(t1.crt1.sc.df_NB_BC_afill)[names(t1.crt1.sc.df_NB_BC_afill) == "CT_T1_Afill_BC"] <- "A2"
+
+t1.CRT1.Afill.df <- rbind(t1.crt1.sc.df_NB_BC_afill)
+t1.CRT1.Afill.df <- na.omit(t1.CRT1.Afill.df)
+
+#time 2
+
+t2.crt1.sc.df_NB_BC_afill <- subset(sc.df_NB_BC, select = c("CT_T2_Afill_NB",  "CT_T2_Afill_BC"))
+names(t2.crt1.sc.df_NB_BC_afill)[names(t2.crt1.sc.df_NB_BC_afill) == "CT_T2_Afill_NB"] <- "A1"
+names(t2.crt1.sc.df_NB_BC_afill)[names(t2.crt1.sc.df_NB_BC_afill) == "CT_T2_Afill_BC"] <- "A2"
+
+t2.CRT1.Afill.df <- rbind(t2.crt1.sc.df_NB_BC_afill)
+t2.CRT1.Afill.df <- na.omit(t2.CRT1.Afill.df)
+
+#time 1
+t1.crt1.sc.df_NB_BC_antag <- subset(sc.df_NB_BC, select = c("CT_T1_Antag_NB",  "CT_T1_Antag_BC"))
+names(t1.crt1.sc.df_NB_BC_antag)[names(t1.crt1.sc.df_NB_BC_antag) == "CT_T1_Antag_NB"] <- "A1"
+names(t1.crt1.sc.df_NB_BC_antag)[names(t1.crt1.sc.df_NB_BC_antag) == "CT_T1_Antag_BC"] <- "A2"
+
+t1.CRT1.Antag.df <- rbind(t1.crt1.sc.df_NB_BC_antag)
+t1.CRT1.Antag.df <- na.omit(t1.CRT1.Antag.df)
+
+#time 2
+t2.crt1.sc.df_NB_BC_antag <- subset(sc.df_NB_BC, select = c("CT_T2_Antag_NB",  "CT_T2_Antag_BC"))
+names(t2.crt1.sc.df_NB_BC_antag)[names(t2.crt1.sc.df_NB_BC_antag) == "CT_T2_Antag_NB"] <- "A1"
+names(t2.crt1.sc.df_NB_BC_antag)[names(t2.crt1.sc.df_NB_BC_antag) == "CT_T2_Antag_BC"] <- "A2"
+
+t2.CRT1.Antag.df <- rbind(t2.crt1.sc.df_NB_BC_antag)
+t2.CRT1.Antag.df <- na.omit(t2.CRT1.Antag.df)
+
+#time 1
+t1.crt1.sc.df_NB_BC_eng <- subset(sc.df_NB_BC, select = c("CT_T1_Eng_NB",  "CT_T1_Eng_BC"))
+names(t1.crt1.sc.df_NB_BC_eng)[names(t1.crt1.sc.df_NB_BC_eng) == "CT_T1_Eng_NB"] <- "A1"
+names(t1.crt1.sc.df_NB_BC_eng)[names(t1.crt1.sc.df_NB_BC_eng) == "CT_T1_Eng_BC"] <- "A2"
+
+t1.CRT1.Eng.df <- rbind(t1.crt1.sc.df_NB_BC_eng)
+t1.CRT1.Eng.df <- na.omit(t1.CRT1.Eng.df)
+
+#time 2
+
+t2.crt1.sc.df_NB_BC_eng <- subset(sc.df_NB_BC, select = c("CT_T2_Eng_NB",  "CT_T2_Eng_BC"))
+names(t2.crt1.sc.df_NB_BC_eng)[names(t2.crt1.sc.df_NB_BC_eng) == "CT_T2_Eng_NB"] <- "A1"
+names(t2.crt1.sc.df_NB_BC_eng)[names(t2.crt1.sc.df_NB_BC_eng) == "CT_T2_Eng_BC"] <- "A2"
+
+t2.CRT1.Eng.df <- rbind(t2.crt1.sc.df_NB_BC_eng)
+t2.CRT1.Eng.df <- na.omit(t2.CRT1.Eng.df)
+
+#time 1
+t1.crt1.sc.df_NB_BC_jce <- subset(sc.df_NB_BC, select = c("CT_T1_JCE_NB",  "CT_T1_JCE_BC"))
+names(t1.crt1.sc.df_NB_BC_jce)[names(t1.crt1.sc.df_NB_BC_jce) == "CT_T1_JCE_NB"] <- "A1"
+names(t1.crt1.sc.df_NB_BC_jce)[names(t1.crt1.sc.df_NB_BC_jce) == "CT_T1_JCE_BC"] <- "A2"
+
+t1.CRT1.JCE.df <- rbind(t1.crt1.sc.df_NB_BC_jce)
+t1.CRT1.JCE.df <- na.omit(t1.CRT1.JCE.df)
+
+#time 2
+t2.crt1.sc.df_NB_BC_jce <- subset(sc.df_NB_BC, select = c("CT_T2_JCE_NB",  "CT_T2_JCE_BC"))
+names(t2.crt1.sc.df_NB_BC_jce)[names(t2.crt1.sc.df_NB_BC_jce) == "CT_T2_JCE_NB"] <- "A1"
+names(t2.crt1.sc.df_NB_BC_jce)[names(t2.crt1.sc.df_NB_BC_jce) == "CT_T2_JCE_BC"] <- "A2"
+
+t2.CRT1.JCE.df <- rbind(t2.crt1.sc.df_NB_BC_jce)
+t2.CRT1.JCE.df <- na.omit(t2.CRT1.JCE.df)
+
+#CRT2 combine all rater pairs
+
+#time 1
+t1.crt2.sc.df_AO_BC_afill <- subset(sc.df_AO_BC, select = c("CR_T1_Afill_AO",  "CR_T1_Afill_BC"))
+names(t1.crt2.sc.df_AO_BC_afill)[names(t1.crt2.sc.df_AO_BC_afill) == "CR_T1_Afill_AO"] <- "A1"
+names(t1.crt2.sc.df_AO_BC_afill)[names(t1.crt2.sc.df_AO_BC_afill) == "CR_T1_Afill_BC"] <- "A2"
+
+t1.crt2.sc.df_AO_NB_afill <- subset(sc.df_AO_NB, select = c("CR_T1_Afill_AO",  "CR_T1_Afill_NB"))
+names(t1.crt2.sc.df_AO_NB_afill)[names(t1.crt2.sc.df_AO_NB_afill) == "CR_T1_Afill_AO"] <- "A1"
+names(t1.crt2.sc.df_AO_NB_afill)[names(t1.crt2.sc.df_AO_NB_afill) == "CR_T1_Afill_NB"] <- "A2"
+
+t1.crt2.sc.df_NB_BC_afill <- subset(sc.df_NB_BC, select = c("CR_T1_Afill_NB",  "CR_T1_Afill_BC"))
+names(t1.crt2.sc.df_NB_BC_afill)[names(t1.crt2.sc.df_NB_BC_afill) == "CR_T1_Afill_NB"] <- "A1"
+names(t1.crt2.sc.df_NB_BC_afill)[names(t1.crt2.sc.df_NB_BC_afill) == "CR_T1_Afill_BC"] <- "A2"
+
+t1.CRT2.Afill.df <- rbind(t1.crt2.sc.df_AO_BC_afill, t1.crt2.sc.df_AO_NB_afill, t1.crt2.sc.df_NB_BC_afill)
+t1.CRT2.Afill.df <- na.omit(t1.CRT2.Afill.df)
+
+#time 2
+t2.crt2.sc.df_AO_BC_afill <- subset(sc.df_AO_BC, select = c("CR_T2_Afill_AO",  "CR_T2_Afill_BC"))
+names(t2.crt2.sc.df_AO_BC_afill)[names(t2.crt2.sc.df_AO_BC_afill) == "CR_T2_Afill_AO"] <- "A1"
+names(t2.crt2.sc.df_AO_BC_afill)[names(t2.crt2.sc.df_AO_BC_afill) == "CR_T2_Afill_BC"] <- "A2"
+
+t2.crt2.sc.df_AO_NB_afill <- subset(sc.df_AO_NB, select = c("CR_T2_Afill_AO",  "CR_T2_Afill_NB"))
+names(t2.crt2.sc.df_AO_NB_afill)[names(t2.crt2.sc.df_AO_NB_afill) == "CR_T2_Afill_AO"] <- "A1"
+names(t2.crt2.sc.df_AO_NB_afill)[names(t2.crt2.sc.df_AO_NB_afill) == "CR_T2_Afill_NB"] <- "A2"
+
+t2.crt2.sc.df_NB_BC_afill <- subset(sc.df_NB_BC, select = c("CR_T2_Afill_NB",  "CR_T2_Afill_BC"))
+names(t2.crt2.sc.df_NB_BC_afill)[names(t2.crt2.sc.df_NB_BC_afill) == "CR_T2_Afill_NB"] <- "A1"
+names(t2.crt2.sc.df_NB_BC_afill)[names(t2.crt2.sc.df_NB_BC_afill) == "CR_T2_Afill_BC"] <- "A2"
+
+t2.CRT2.Afill.df <- rbind(t2.crt2.sc.df_AO_BC_afill, t2.crt2.sc.df_AO_NB_afill, t2.crt2.sc.df_NB_BC_afill)
+t2.CRT2.Afill.df <- na.omit(t2.CRT2.Afill.df)
+
+#time 1
+t1.crt2.sc.df_AO_BC_antag <- subset(sc.df_AO_BC, select = c("CR_T1_Antag_AO",  "CR_T1_Antag_BC"))
+names(t1.crt2.sc.df_AO_BC_antag)[names(t1.crt2.sc.df_AO_BC_antag) == "CR_T1_Antag_AO"] <- "A1"
+names(t1.crt2.sc.df_AO_BC_antag)[names(t1.crt2.sc.df_AO_BC_antag) == "CR_T1_Antag_BC"] <- "A2"
+
+t1.crt2.sc.df_AO_NB_antag <- subset(sc.df_AO_NB, select = c("CR_T1_Antag_AO",  "CR_T1_Antag_NB"))
+names(t1.crt2.sc.df_AO_NB_antag)[names(t1.crt2.sc.df_AO_NB_antag) == "CR_T1_Antag_AO"] <- "A1"
+names(t1.crt2.sc.df_AO_NB_antag)[names(t1.crt2.sc.df_AO_NB_antag) == "CR_T1_Antag_NB"] <- "A2"
+
+t1.crt2.sc.df_NB_BC_antag <- subset(sc.df_NB_BC, select = c("CR_T1_Antag_NB",  "CR_T1_Antag_BC"))
+names(t1.crt2.sc.df_NB_BC_antag)[names(t1.crt2.sc.df_NB_BC_antag) == "CR_T1_Antag_NB"] <- "A1"
+names(t1.crt2.sc.df_NB_BC_antag)[names(t1.crt2.sc.df_NB_BC_antag) == "CR_T1_Antag_BC"] <- "A2"
+
+t1.CRT2.Antag.df <- rbind(t1.crt2.sc.df_AO_BC_antag, t1.crt2.sc.df_AO_NB_antag, t1.crt2.sc.df_NB_BC_antag)
+t1.CRT2.Antag.df <- na.omit(t1.CRT2.Antag.df)
+
+#time 2
+t2.crt2.sc.df_AO_BC_antag <- subset(sc.df_AO_BC, select = c("CR_T2_Antag_AO",  "CR_T2_Antag_BC"))
+names(t2.crt2.sc.df_AO_BC_antag)[names(t2.crt2.sc.df_AO_BC_antag) == "CR_T2_Antag_AO"] <- "A1"
+names(t2.crt2.sc.df_AO_BC_antag)[names(t2.crt2.sc.df_AO_BC_antag) == "CR_T2_Antag_BC"] <- "A2"
+
+t2.crt2.sc.df_AO_NB_antag <- subset(sc.df_AO_NB, select = c("CR_T2_Antag_AO",  "CR_T2_Antag_NB"))
+names(t2.crt2.sc.df_AO_NB_antag)[names(t2.crt2.sc.df_AO_NB_antag) == "CR_T2_Antag_AO"] <- "A1"
+names(t2.crt2.sc.df_AO_NB_antag)[names(t2.crt2.sc.df_AO_NB_antag) == "CR_T2_Antag_NB"] <- "A2"
+
+t2.crt2.sc.df_NB_BC_antag <- subset(sc.df_NB_BC, select = c("CR_T2_Antag_NB",  "CR_T2_Antag_BC"))
+names(t2.crt2.sc.df_NB_BC_antag)[names(t2.crt2.sc.df_NB_BC_antag) == "CR_T2_Antag_NB"] <- "A1"
+names(t2.crt2.sc.df_NB_BC_antag)[names(t2.crt2.sc.df_NB_BC_antag) == "CR_T2_Antag_BC"] <- "A2"
+
+t2.CRT2.Antag.df <- rbind(t2.crt2.sc.df_AO_BC_antag, t2.crt2.sc.df_AO_NB_antag, t2.crt2.sc.df_NB_BC_antag)
+t2.CRT2.Antag.df <- na.omit(t2.CRT2.Antag.df)
+
+#time 1
+t1.crt2.sc.df_AO_BC_eng <- subset(sc.df_AO_BC, select = c("CR_T1_Eng_AO",  "CR_T1_Eng_BC"))
+names(t1.crt2.sc.df_AO_BC_eng)[names(t1.crt2.sc.df_AO_BC_eng) == "CR_T1_Eng_AO"] <- "A1"
+names(t1.crt2.sc.df_AO_BC_eng)[names(t1.crt2.sc.df_AO_BC_eng) == "CR_T1_Eng_BC"] <- "A2"
+
+t1.crt2.sc.df_AO_NB_eng <- subset(sc.df_AO_NB, select = c("CR_T1_Eng_AO",  "CR_T1_Eng_NB"))
+names(t1.crt2.sc.df_AO_NB_eng)[names(t1.crt2.sc.df_AO_NB_eng) == "CR_T1_Eng_AO"] <- "A1"
+names(t1.crt2.sc.df_AO_NB_eng)[names(t1.crt2.sc.df_AO_NB_eng) == "CR_T1_Eng_NB"] <- "A2"
+
+t1.crt2.sc.df_NB_BC_eng <- subset(sc.df_NB_BC, select = c("CR_T1_Eng_NB",  "CR_T1_Eng_BC"))
+names(t1.crt2.sc.df_NB_BC_eng)[names(t1.crt2.sc.df_NB_BC_eng) == "CR_T1_Eng_NB"] <- "A1"
+names(t1.crt2.sc.df_NB_BC_eng)[names(t1.crt2.sc.df_NB_BC_eng) == "CR_T1_Eng_BC"] <- "A2"
+
+t1.CRT2.Eng.df <- rbind(t1.crt2.sc.df_AO_BC_eng, t1.crt2.sc.df_AO_NB_eng, t1.crt2.sc.df_NB_BC_eng)
+t1.CRT2.Eng.df <- na.omit(t1.CRT2.Eng.df)
+
+#time 2
+t2.crt2.sc.df_AO_BC_eng <- subset(sc.df_AO_BC, select = c("CR_T2_Eng_AO",  "CR_T2_Eng_BC"))
+names(t2.crt2.sc.df_AO_BC_eng)[names(t2.crt2.sc.df_AO_BC_eng) == "CR_T2_Eng_AO"] <- "A1"
+names(t2.crt2.sc.df_AO_BC_eng)[names(t2.crt2.sc.df_AO_BC_eng) == "CR_T2_Eng_BC"] <- "A2"
+
+t2.crt2.sc.df_AO_NB_eng <- subset(sc.df_AO_NB, select = c("CR_T2_Eng_AO",  "CR_T2_Eng_NB"))
+names(t2.crt2.sc.df_AO_NB_eng)[names(t2.crt2.sc.df_AO_NB_eng) == "CR_T2_Eng_AO"] <- "A1"
+names(t2.crt2.sc.df_AO_NB_eng)[names(t2.crt2.sc.df_AO_NB_eng) == "CR_T2_Eng_NB"] <- "A2"
+
+t2.crt2.sc.df_NB_BC_eng <- subset(sc.df_NB_BC, select = c("CR_T2_Eng_NB",  "CR_T2_Eng_BC"))
+names(t2.crt2.sc.df_NB_BC_eng)[names(t2.crt2.sc.df_NB_BC_eng) == "CR_T2_Eng_NB"] <- "A1"
+names(t2.crt2.sc.df_NB_BC_eng)[names(t2.crt2.sc.df_NB_BC_eng) == "CR_T2_Eng_BC"] <- "A2"
+
+t2.CRT2.Eng.df <- rbind(t2.crt2.sc.df_AO_BC_eng, t2.crt2.sc.df_AO_NB_eng, t2.crt2.sc.df_NB_BC_eng)
+t2.CRT2.Eng.df <- na.omit(t2.CRT2.Eng.df)
+
+#time 1
+t1.crt2.sc.df_AO_BC_jce <- subset(sc.df_AO_BC, select = c("CR_T1_JCE_AO",  "CR_T1_JCE_BC"))
+names(t1.crt2.sc.df_AO_BC_jce)[names(t1.crt2.sc.df_AO_BC_jce) == "CR_T1_JCE_AO"] <- "A1"
+names(t1.crt2.sc.df_AO_BC_jce)[names(t1.crt2.sc.df_AO_BC_jce) == "CR_T1_JCE_BC"] <- "A2"
+
+t1.crt2.sc.df_AO_NB_jce <- subset(sc.df_AO_NB, select = c("CR_T1_JCE_AO",  "CR_T1_JCE_NB"))
+names(t1.crt2.sc.df_AO_NB_jce)[names(t1.crt2.sc.df_AO_NB_jce) == "CR_T1_JCE_AO"] <- "A1"
+names(t1.crt2.sc.df_AO_NB_jce)[names(t1.crt2.sc.df_AO_NB_jce) == "CR_T1_JCE_NB"] <- "A2"
+
+t1.crt2.sc.df_NB_BC_jce <- subset(sc.df_NB_BC, select = c("CR_T1_JCE_NB",  "CR_T1_JCE_BC"))
+names(t1.crt2.sc.df_NB_BC_jce)[names(t1.crt2.sc.df_NB_BC_jce) == "CR_T1_JCE_NB"] <- "A1"
+names(t1.crt2.sc.df_NB_BC_jce)[names(t1.crt2.sc.df_NB_BC_jce) == "CR_T1_JCE_BC"] <- "A2"
+
+t1.CRT2.JCE.df <- rbind(t1.crt2.sc.df_AO_BC_jce, t1.crt2.sc.df_AO_NB_jce, t1.crt2.sc.df_NB_BC_jce)
+t1.CRT2.JCE.df <- na.omit(t1.CRT2.JCE.df)
+
+#time 2
+t2.crt2.sc.df_AO_BC_jce <- subset(sc.df_AO_BC, select = c("CR_T2_JCE_AO",  "CR_T2_JCE_BC"))
+names(t2.crt2.sc.df_AO_BC_jce)[names(t2.crt2.sc.df_AO_BC_jce) == "CR_T2_JCE_AO"] <- "A1"
+names(t2.crt2.sc.df_AO_BC_jce)[names(t2.crt2.sc.df_AO_BC_jce) == "CR_T2_JCE_BC"] <- "A2"
+
+t2.crt2.sc.df_AO_NB_jce <- subset(sc.df_AO_NB, select = c("CR_T2_JCE_AO",  "CR_T2_JCE_NB"))
+names(t2.crt2.sc.df_AO_NB_jce)[names(t2.crt2.sc.df_AO_NB_jce) == "CR_T2_JCE_AO"] <- "A1"
+names(t2.crt2.sc.df_AO_NB_jce)[names(t2.crt2.sc.df_AO_NB_jce) == "CR_T2_JCE_NB"] <- "A2"
+
+t2.crt2.sc.df_NB_BC_jce <- subset(sc.df_NB_BC, select = c("CR_T2_JCE_NB",  "CR_T2_JCE_BC"))
+names(t2.crt2.sc.df_NB_BC_jce)[names(t2.crt2.sc.df_NB_BC_jce) == "CR_T2_JCE_NB"] <- "A1"
+names(t2.crt2.sc.df_NB_BC_jce)[names(t2.crt2.sc.df_NB_BC_jce) == "CR_T2_JCE_BC"] <- "A2"
+
+t2.CRT2.JCE.df <- rbind(t2.crt2.sc.df_AO_BC_jce, t2.crt2.sc.df_AO_NB_jce, t2.crt2.sc.df_NB_BC_jce)
+t2.CRT2.JCE.df <- na.omit(t2.CRT2.JCE.df)
+
+```
+
+### Parallel Roles Task 
+
+```{r PRT CIQ, include = TRUE}
+#Afill behaviour TIME 1
+icc(t1.PRT.Afill.df, model="twoway", type="consistency", unit = "average")
+
+#Afill behaviour TIME 2
+icc(t2.PRT.Afill.df, model="twoway", type="consistency", unit = "average")
+
+#Antag behaviour TIME 1
+icc(t1.PRT.Antag.df, model="twoway", type="consistency", unit = "average")
+
+#Antag behaviour TIME 2
+icc(t2.PRT.Antag.df, model="twoway", type="consistency", unit = "average")
+
+#Eng behaviour TIME 1
+icc(t1.PRT.Eng.df, model="twoway", type="consistency", unit = "average")
+
+#Eng behaviour TIME 2
+icc(t2.PRT.Eng.df, model="twoway", type="consistency", unit = "average")
+
+#JCE behaviour TIME 1
+icc(t1.PRT.JCE.df, model="twoway", type="consistency", unit = "average")
+
+#JCE behaviour TIME 2
+icc(t2.PRT.JCE.df, model="twoway", type="consistency", unit = "average")
+
+```
+
+### CRT-1 
+
+```{r CRT1 CIQ, include = TRUE}
+#Afill behaviour TIME 1
+icc(t1.CRT1.Afill.df, model="twoway", type="consistency", unit = "average")
+
+#Afill behaviour TIME 2
+icc(t2.CRT1.Afill.df, model="twoway", type="consistency", unit = "average")
+
+#Antag behaviour TIME 1
+icc(t1.CRT1.Antag.df, model="twoway", type="consistency", unit = "average")
+
+#Antag behaviour TIME 2
+icc(t2.CRT1.Antag.df, model="twoway", type="consistency", unit = "average")
+
+#Eng behaviour TIME 1
+icc(t1.CRT1.Eng.df, model="twoway", type="consistency", unit = "average")
+
+#Eng behaviour TIME 2
+icc(t2.CRT1.Eng.df, model="twoway", type="consistency", unit = "average")
+
+#JCE behaviour TIME 1
+icc(t1.CRT1.JCE.df, model="twoway", type="consistency", unit = "average")
+
+#JCE behaviour TIME 2
+icc(t2.CRT1.JCE.df, model="twoway", type="consistency", unit = "average")
+```
+
+### CRT-2
+
+```{r CRT2 CIQ, include = TRUE}
+#Afill behaviour TIME 1
+icc(t1.CRT2.Afill.df, model="twoway", type="consistency", unit = "average")
+
+#Afill behaviour TIME 2
+icc(t2.CRT2.Afill.df, model="twoway", type="consistency", unit = "average")
+
+#Antag behaviour TIME 1
+icc(t1.CRT2.Antag.df, model="twoway", type="consistency", unit = "average")
+
+#Antag behaviour TIME 2
+icc(t2.CRT2.Antag.df, model="twoway", type="consistency", unit = "average")
+
+#Eng behaviour TIME 1
+icc(t1.CRT2.Eng.df, model="twoway", type="consistency", unit = "average")
+
+#Eng behaviour TIME 2
+icc(t2.CRT2.Eng.df, model="twoway", type="consistency", unit = "average")
+
+#JCE behaviour TIME 1
+icc(t1.CRT2.JCE.df, model="twoway", type="consistency", unit = "average")
+
+#JCE behaviour TIME 2
+icc(t2.CRT2.JCE.df, model="twoway", type="consistency", unit = "average")
+```

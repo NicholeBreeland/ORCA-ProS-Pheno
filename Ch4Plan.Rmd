@@ -1,0 +1,913 @@
+---
+title: "Cooperative Phenotype"
+author: "Nichole Breeland"
+date: "14/07/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("Hmisc")
+library("corrplot")
+library(psych)
+library(missForest)
+library(lavaan)
+library(mice)
+library(DescTools)
+library(missRanger)
+library(semPlot)
+library(lavaanPlot)
+library(miceadds)
+library(semTools)
+library(polycor)
+options(scipen = 999)
+```
+
+```{r data import, include = FALSE}
+all.data <- read.csv("Pheno.Data.csv", stringsAsFactors = FALSE)
+all.data[all.data == 999] <- NA
+all.data[all.data == 777] <- NA
+all.data[all.data == 888] <- NA
+```
+
+## Variable Recoding and decisions
+* Removed Latency variable - due to nested missingness - tried 180 sec (max time allowed) but was an outlier value so would have had to windsorize.
+
+```{r main dataframe selection}
+#Subset for main dataframe analyses (without level assignments)
+p4.df <- all.data[which(all.data$Study_inout == 1),]
+
+p4.df <- subset(p4.df, select = c("ORCA_ID", "Gender", "Age_P4", "Anticipation_P3", 
+                                  "Avg_SC_PR_P4", "Avg_Succ_PR_P4", "PR_ReEng_Proportion_P4",
+                                       "PR_P_Passive_P4", "Avg_SC_FT_P4", 
+                                       "Avg_Succ_FT_P4", "FT_ReEng_Proportion_P4", 
+                                       "FT_Passive_Proportion_P4", "Avg_SC_CT_P4", 
+                                       "Avg_Succ_CT_P4", "CT_ReEng_Proportion_P4", 
+                                       "CT_P_Passive_P4", "CoMotiv_p4", "PR_Afill_P4",
+                                     "PR_Antag_P4", "CT_Afill_P4",
+                                     "CT_Antag_P4", "FT_Afill_P4", "FT_Antag_P4"))
+```
+
+```{r main df outliers windsorized, results = 'hide'}
+#PRT variables
+#Spatial coordination
+p4.df$Avg_SC_PR_P4 <- Winsorize(p4.df$Avg_SC_PR_P4, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+#Interruption paradigm cooperative understanding
+p4.df$PR_ReEng_Proportion_P4 <- Winsorize(p4.df$PR_ReEng_Proportion_P4, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+#Interruption paradigm cooperative motivation
+p4.df$PR_P_Passive_P4 <- Winsorize(p4.df$PR_P_Passive_P4, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+#Afilliative behaviours
+p4.df$PR_Afill_P4 <- Winsorize(p4.df$PR_Afill_P4, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+#Antagonistic behaviours
+p4.df$PR_Antag_P4 <- Winsorize(p4.df$PR_Antag_P4, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+
+#CT variables
+#Spatial coordination
+p4.df$Avg_SC_CT_P4 <- Winsorize(p4.df$Avg_SC_CT_P4, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+#Interruption paradigm cooperative understanding
+p4.df$CT_ReEng_Proportion_P4 <- Winsorize(p4.df$CT_ReEng_Proportion_P4, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+#Interruption paradigm cooperative motivation
+p4.df$CT_P_Passive_P4 <- Winsorize(p4.df$CT_P_Passive_P4, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+#Afilliative behaviours
+p4.df$CT_Afill_P4 <- Winsorize(p4.df$CT_Afill_P4, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+#Antagonistic behaviours
+p4.df$CT_Antag_P4 <- Winsorize(p4.df$CT_Antag_P4, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+
+#FT variables
+#Spatial coordination
+p4.df$Avg_SC_FT_P4 <- Winsorize(p4.df$Avg_SC_FT_P4, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+#Interruption paradigm cooperative understanding
+p4.df$FT_ReEng_Proportion_P4 <- Winsorize(p4.df$FT_ReEng_Proportion_P4, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+#Interruption paradigm cooperative motivation
+p4.df$FT_Passive_Proportion_P4 <- Winsorize(p4.df$FT_Passive_Proportion_P4, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+#Afilliative behaviours
+p4.df$FT_Afill_P4 <- Winsorize(p4.df$FT_Afill_P4, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+#Antagonistic behaviours
+p4.df$FT_Antag_P4 <- Winsorize(p4.df$FT_Antag_P4, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+```
+
+```{r assigning factors and levels, include = FALSE}
+#p4.df$Avg_SC_PR_P4 <- factor(#p4.df$Avg_SC_PR_P4, ordered = TRUE)
+#p4.df$Avg_SC_CT_P4 <- factor(#p4.df$Avg_SC_CT_P4, ordered = TRUE)
+#p4.df$Avg_SC_FT_P4 <- factor(#p4.df$Avg_SC_FT_P4, ordered = TRUE)
+#p4.df$Avg_Succ_PR_P4 <- factor(#p4.df$Avg_Succ_PR_P4, ordered = TRUE)
+#p4.df$Avg_Succ_CT_P4 <- factor(#p4.df$Avg_Succ_CT_P4, ordered = TRUE)
+#p4.df$Avg_Succ_FT_P4 <- factor(#p4.df$Avg_Succ_FT_P4, ordered = TRUE)
+p4.df$CoMotiv_p4 <- factor(p4.df$CoMotiv_p4, ordered = TRUE)
+#p4.df$PR_Afill_P4 <- factor(#p4.df$PR_Afill_P4, ordered = TRUE)
+#p4.df$CT_Afill_P4 <- factor(#p4.df$CT_Afill_P4, ordered = TRUE)
+#p4.df$FT_Afill_P4 <- factor(#p4.df$FT_Afill_P4, ordered = TRUE)
+#p4.df$PR_Antag_P4 <- factor(#p4.df$PR_Antag_P4, ordered = TRUE)
+#p4.df$CT_Antag_P4 <- factor(#p4.df$CT_Antag_P4, ordered = TRUE)
+#p4.df$FT_Antag_P4 <- factor(#p4.df$FT_Antag_P4, ordered = TRUE)
+```
+
+```{r recoding interruption paradigm variables}
+#p4.df$PR_ReEng_Proportion_#p4[#p4.df$PR_ReEng_Proportion_#p4 > 0 ] <- 1
+#p4.df$PR_ReEng_Proportion_#p4 <- factor(#p4.df$PR_ReEng_Proportion_#p4, ordered = TRUE)
+
+#p4.df$PR_P_Passive_#p4[#p4.df$PR_P_Passive_#p4 > 0 ] <- 1
+#p4.df$PR_P_Passive_#p4 <- factor(#p4.df$PR_P_Passive_#p4, ordered = TRUE)
+
+#p4.df$FT_ReEng_Proportion_#p4[#p4.df$FT_ReEng_Proportion_#p4 > 0 ] <- 1
+#p4.df$FT_ReEng_Proportion_#p4 <- factor(#p4.df$FT_ReEng_Proportion_#p4, ordered = TRUE)
+
+#p4.df$FT_Passive_Proportion_#p4[#p4.df$FT_Passive_Proportion_#p4 > 0 ] <- 1
+#p4.df$FT_Passive_Proportion_#p4 <- factor(#p4.df$FT_Passive_Proportion_#p4, ordered = TRUE)
+
+#p4.df$CT_ReEng_Proportion_#p4[#p4.df$CT_ReEng_Proportion_#p4 > 0 ] <- 1
+#p4.df$CT_ReEng_Proportion_#p4 <- factor(#p4.df$CT_ReEng_Proportion_#p4, ordered = TRUE)
+
+#p4.df$CT_P_Passive_#p4[#p4.df$CT_P_Passive_#p4 > 0 ] <- 1
+#p4.df$CT_P_Passive_#p4 <- factor(#p4.df$CT_P_Passive_#p4, ordered = TRUE)
+```
+
+
+## Variables and Descriptives
+
+#### Age of all participants who completed p4 visit
+* Type: Continuous  
+* Function: Control, Demographic
+```{r Participant age on all P4 study in participants}
+with(p4.df, hist(Age_P4,breaks = 10,
+                   xlab = "age (months)",
+                   main = "hist participant age"))
+mean(p4.df$Age_P4, na.rm = TRUE)
+sd(p4.df$Age_P4, na.rm = TRUE)
+range(p4.df$Age_P4, na.rm = TRUE)
+#number of observations NAs removed
+sum(!is.na(p4.df$Age_P4))
+```
+
+#### Gender of all participants who completed p4 visit
+* Type: Categorical
+* Function: Control, Demographic
+```{r Participant gender}
+#1 = Male
+#2 = Female
+table(p4.df$Gender)
+```
+
+#### Anticipation score
+* Type: Continuous  
+* Function: Cooperative Understanding
+```{r Participant Anticipation Scores}
+with(p4.df, hist(Anticipation_P3,breaks = 10,
+                   xlab = "anti score (months)",
+                   main = "hist participant anticipation"))
+mean(p4.df$Anticipation_P3, na.rm = TRUE)
+sd(p4.df$Anticipation_P3, na.rm = TRUE)
+range(p4.df$Anticipation_P3, na.rm = TRUE)
+#number of observations NAs removed
+sum(!is.na(p4.df$Anticipation_P3))
+```
+
+#### PRT Re-Eng (IP) Score
+* Type: Continous 
+* Function: Cooperative Understanding 
+```{r Participant PRT IP ReEng}
+with(p4.df, hist(PR_ReEng_Proportion_P4,breaks = 5,
+                   xlab = "Re-engagement IP Score",
+                   main = "hist PRT re-eng"))
+mean(p4.df$PR_ReEng_Proportion_P4, na.rm = TRUE)
+sd(p4.df$PR_ReEng_Proportion_P4, na.rm = TRUE)
+range(p4.df$PR_ReEng_Proportion_P4, na.rm = TRUE)
+#number of observations NAs removed
+sum(!is.na(p4.df$PR_ReEng_Proportion_P4))
+```
+
+#### C-CRT Re-Eng (IP) Score
+* Type: Continous 
+* Function: Cooperative Understanding 
+```{r Participant C-CRT IP ReEng}
+with(p4.df, hist(CT_ReEng_Proportion_P4,breaks = 5,
+                   xlab = "Re-engagement IP Score",
+                   main = "hist C-CRT re-eng"))
+mean(p4.df$CT_ReEng_Proportion_P4, na.rm = TRUE)
+sd(p4.df$CT_ReEng_Proportion_P4, na.rm = TRUE)
+range(p4.df$CT_ReEng_Proportion_P4, na.rm = TRUE)
+#number of observations NAs removed
+sum(!is.na(p4.df$CT_ReEng_Proportion_P4))
+```
+
+#### F-CRT Re-Eng (IP) Score
+* Type: Continous 
+* Function: Cooperative Understanding 
+```{r Participant F-CRT IP ReEng}
+with(p4.df, hist(FT_ReEng_Proportion_P4,breaks = 5,
+                   xlab = "Re-engagement IP Score",
+                   main = "hist F-CRT re-eng"))
+mean(p4.df$FT_ReEng_Proportion_P4, na.rm = TRUE)
+sd(p4.df$FT_ReEng_Proportion_P4, na.rm = TRUE)
+range(p4.df$FT_ReEng_Proportion_P4, na.rm = TRUE)
+#number of observations NAs removed
+sum(!is.na(p4.df$FT_ReEng_Proportion_P4))
+```
+
+#### PRT spatial coordination score
+* Type: Continuous  
+* Function: Cooperative Ability
+```{r Participant PRT SC Scores}
+with(p4.df, hist(Avg_SC_PR_P4,breaks = 5,
+                   xlab = "SC score",
+                   main = "hist PRT SC"))
+mean(p4.df$Avg_SC_PR_P4, na.rm = TRUE)
+sd(p4.df$Avg_SC_PR_P4, na.rm = TRUE)
+range(p4.df$Avg_SC_PR_P4, na.rm = TRUE)
+table(p4.df$Avg_SC_PR_P4)
+#number of observations NAs removed
+sum(!is.na(p4.df$Avg_SC_PR_P4))
+```
+
+#### C-CRT spatial coordination score
+* Type: Continuous  
+* Function: Cooperative Ability 
+```{r Participant C-CRT SC Scores}
+with(p4.df, hist(Avg_SC_CT_P4,breaks = 5,
+                   xlab = "SC score",
+                   main = "hist C-CRT SC"))
+mean(p4.df$Avg_SC_CT_P4, na.rm = TRUE)
+sd(p4.df$Avg_SC_CT_P4, na.rm = TRUE)
+range(p4.df$Avg_SC_CT_P4, na.rm = TRUE)
+table(p4.df$Avg_SC_CT_P4)
+#number of observations NAs removed
+sum(!is.na(p4.df$Avg_SC_CT_P4))
+```
+
+#### F-CRT spatial coordination score
+* Type: Continuous  
+* Function: Cooperative Ability 
+```{r Participant F-CRT Scores}
+with(p4.df, hist(Avg_SC_FT_P4,breaks = 5,
+                   xlab = "SC score",
+                   main = "hist F-CRT SC"))
+mean(p4.df$Avg_SC_FT_P4, na.rm = TRUE)
+sd(p4.df$Avg_SC_FT_P4, na.rm = TRUE)
+range(p4.df$Avg_SC_FT_P4, na.rm = TRUE)
+table(p4.df$Avg_SC_FT_P4)
+#number of observations NAs removed
+sum(!is.na(p4.df$Avg_SC_FT_P4))
+```
+
+#### PRT success Score
+* Type: Ordinal  
+* Function: Cooperative Ability 
+```{r Participant PRT Succ Score}
+with(p4.df, hist(Avg_Succ_PR_P4,breaks = 5,
+                   xlab = "Succ Sucore",
+                   main = "hist PRT Succ"))
+mean(p4.df$Avg_Succ_PR_P4, na.rm = TRUE)
+sd(p4.df$Avg_Succ_PR_P4, na.rm = TRUE)
+range(p4.df$Avg_Succ_PR_P4, na.rm = TRUE)
+table(p4.df$Avg_Succ_PR_P4)
+#number of observations NAs removed
+sum(!is.na(p4.df$Avg_Succ_PR_P4))
+```
+
+#### C-CRT success Score
+* Type: Ordinal  
+* Function: Cooperative Ability 
+```{r Participant C-CRT Succ Score}
+with(p4.df, hist(Avg_Succ_CT_P4,breaks = 5,
+                   xlab = "Succ Score",
+                   main = "hist C-CRT Succ"))
+mean(p4.df$Avg_Succ_CT_P4, na.rm = TRUE)
+sd(p4.df$Avg_Succ_CT_P4, na.rm = TRUE)
+range(p4.df$Avg_Succ_CT_P4, na.rm = TRUE)
+table(p4.df$Avg_Succ_CT_P4)
+#number of observations NAs removed
+sum(!is.na(p4.df$Avg_Succ_CT_P4))
+```
+
+#### F-CRT success Score
+* Type: Ordinal  
+* Function: Cooperative Ability 
+```{r Participant F-CRT Score}
+with(p4.df, hist(Avg_Succ_FT_P4,breaks = 5,
+                   xlab = "Succ Score",
+                   main = "hist F-CRT Succ"))
+mean(p4.df$Avg_Succ_FT_P4, na.rm = TRUE)
+sd(p4.df$Avg_Succ_FT_P4, na.rm = TRUE)
+range(p4.df$Avg_Succ_FT_P4, na.rm = TRUE)
+table(p4.df$Avg_Succ_FT_P4)
+#number of observations NAs removed
+sum(!is.na(p4.df$Avg_Succ_FT_P4))
+```
+
+#### PRT Passive-Eng (IP) Score
+* Type: Continous 
+* Function: Cooperative Motivation 
+```{r Participant PRT IP passive eng}
+with(p4.df, hist(PR_P_Passive_P4,breaks = 5,
+                   xlab = "passive-engagement IP Score",
+                   main = "hist PRT passive-eng"))
+mean(p4.df$PR_P_Passive_P4, na.rm = TRUE)
+sd(p4.df$PR_P_Passive_P4, na.rm = TRUE)
+range(p4.df$PR_P_Passive_P4, na.rm = TRUE)
+#number of observations NAs removed
+sum(!is.na(p4.df$PR_P_Passive_P4))
+```
+
+#### C-CRT Passive-Eng (IP) Score
+* Type: Continous 
+* Function: Cooperative Motivation 
+```{r Participant C-CRT IP passive eng}
+with(p4.df, hist(CT_P_Passive_P4,breaks = 5,
+                   xlab = "passive-engagement IP Score",
+                   main = "hist C-CRT passive-eng"))
+mean(p4.df$CT_P_Passive_P4, na.rm = TRUE)
+sd(p4.df$CT_P_Passive_P4, na.rm = TRUE)
+range(p4.df$CT_P_Passive_P4, na.rm = TRUE)
+#number of observations NAs removed
+sum(!is.na(p4.df$CT_P_Passive_P4))
+```
+
+#### F-CRT Passive-Eng (IP) Score
+* Type: Continous 
+* Function: Cooperative Motivation 
+```{r Participant F-CRT IP passive eng}
+with(p4.df, hist(FT_Passive_Proportion_P4,breaks = 5,
+                   xlab = "passive-engagement IP Score",
+                   main = "hist F-CRT passive-eng"))
+mean(p4.df$FT_Passive_Proportion_P4, na.rm = TRUE)
+sd(p4.df$FT_Passive_Proportion_P4, na.rm = TRUE)
+range(p4.df$FT_Passive_Proportion_P4, na.rm = TRUE)
+#number of observations NAs removed
+sum(!is.na(p4.df$FT_Passive_Proportion_P4))
+```
+
+#### Stack Up Cooperative Motivation
+* Type: Ordinal 
+* Function: Cooperative Motivation
+```{r stack up}
+#with(p4.df, hist(CoMotiv_p4,breaks = 5,
+                   #xlab = "coop stack up Score",
+                   #main = "hist coop stack up "))
+range(p4.df$CoMotiv_p4, na.rm = TRUE)
+table(p4.df$CoMotiv_p4)
+#number of observations NAs removed
+sum(!is.na(p4.df$CoMotiv_p4))
+```
+
+#### PRT Affiliation
+* Type: Ordinal 
+* Function: Interaction Quality 
+```{r PRT afill}
+with(p4.df, hist(PR_Afill_P4,breaks = 10,
+                   xlab = "PRT affiliation Score",
+                   main = "hist PRT affiliation"))
+mean(p4.df$PR_Afill_P4, na.rm = TRUE)
+sd(p4.df$PR_Afill_P4, na.rm = TRUE)
+range(p4.df$PR_Afill_P4, na.rm = TRUE)
+#number of observations NAs removed
+sum(!is.na(p4.df$PR_Afill_P4))
+```
+
+#### C-CRT Affiliation
+* Type: Cont
+* Function: Interaction Quality 
+```{r C-CRT afill}
+with(p4.df, hist(CT_Afill_P4,breaks = 10,
+                   xlab = "C-CRT affiliation Score",
+                   main = "hist C-CRT affiliation"))
+mean(p4.df$CT_Afill_P4, na.rm = TRUE)
+sd(p4.df$CT_Afill_P4, na.rm = TRUE)
+range(p4.df$CT_Afill_P4, na.rm = TRUE)
+#number of observations NAs removed
+sum(!is.na(p4.df$CT_Afill_P4))
+```
+
+#### F-CRT Affiliation
+* Type: Cont
+* Function: Interaction Quality 
+```{r F-CRT afill}
+with(p4.df, hist(FT_Afill_P4,breaks = 10,
+                   xlab = "F-CRT affiliation Score",
+                   main = "hist F-CRT affiliation"))
+mean(p4.df$FT_Afill_P4, na.rm = TRUE)
+sd(p4.df$FT_Afill_P4, na.rm = TRUE)
+range(p4.df$FT_Afill_P4, na.rm = TRUE)
+#number of observations NAs removed
+sum(!is.na(p4.df$FT_Afill_P4))
+```
+
+
+#### PRT Antagonism
+* Type: Ordinal 
+* Function: Interaction Quality 
+```{r PRT antag}
+with(p4.df, hist(PR_Antag_P4,breaks = 10,
+                   xlab = "PRT antagonism Score",
+                   main = "hist PRT antagonism"))
+mean(p4.df$PR_Antag_P4, na.rm = TRUE)
+sd(p4.df$PR_Antag_P4, na.rm = TRUE)
+range(p4.df$PR_Antag_P4, na.rm = TRUE)
+#number of observations NAs removed
+sum(!is.na(p4.df$PR_Antag_P4))
+```
+
+#### C-CRT Antagonism
+* Type: Cont
+* Function: Interaction Quality 
+```{r C-CRT antag}
+with(p4.df, hist(CT_Antag_P4,breaks = 10,
+                   xlab = "C-CRT antagonism Score",
+                   main = "hist C-CRT antagonism"))
+mean(p4.df$CT_Antag_P4, na.rm = TRUE)
+sd(p4.df$CT_Antag_P4, na.rm = TRUE)
+range(p4.df$CT_Antag_P4, na.rm = TRUE)
+#number of observations NAs removed
+sum(!is.na(p4.df$CT_Antag_P4))
+```
+
+#### F-CRT Antagonism
+* Type: Cont
+* Function: Interaction Quality 
+```{r F-CRT antag}
+with(p4.df, hist(FT_Antag_P4,breaks = 10,
+                   xlab = "F-CRT antagonism Score",
+                   main = "hist F-CRT antagonism"))
+mean(p4.df$FT_Antag_P4, na.rm = TRUE)
+sd(p4.df$FT_Antag_P4, na.rm = TRUE)
+range(p4.df$FT_Antag_P4, na.rm = TRUE)
+#number of observations NAs removed
+sum(!is.na(p4.df$FT_Antag_P4))
+```
+
+## Correlations for all variables
+
+```{r subset for P4 correlations, include = FALSE}
+
+#Subset for P4 correlations
+p4.data <- subset(p4.df, select = c("Anticipation_P3", "Avg_SC_PR_P4", "Avg_Succ_PR_P4","PR_ReEng_Proportion_P4",
+                                       "PR_P_Passive_P4", "PR_Afill_P4", "PR_Antag_P4" , "Avg_SC_FT_P4", 
+                                       "Avg_Succ_FT_P4", "FT_ReEng_Proportion_P4", 
+                                       "FT_Passive_Proportion_P4", "FT_Afill_P4", "FT_Antag_P4",
+                                    "Avg_SC_CT_P4", "Avg_Succ_CT_P4", "CT_ReEng_Proportion_P4", 
+                                       "CT_P_Passive_P4", "CT_Afill_P4", "CT_Antag_P4",  "CoMotiv_p4"))
+
+p4.data$Avg_SC_PR_P4 <- as.factor(p4.data$Avg_SC_PR_P4)
+p4.data$Avg_Succ_PR_P4 <- as.factor(p4.data$Avg_Succ_PR_P4)
+p4.data$Avg_SC_FT_P4 <- as.factor(p4.data$Avg_SC_FT_P4)
+p4.data$Avg_Succ_FT_P4 <- as.factor(p4.data$Avg_Succ_FT_P4)
+p4.data$Avg_SC_CT_P4 <- as.factor(p4.data$Avg_SC_CT_P4)
+p4.data$Avg_Succ_CT_P4 <- as.factor(p4.data$Avg_Succ_CT_P4)
+#names.p4help <- c(12:25)
+#p4.data[,names.p4help] <- lapply(p4.data[,names.p4help] , factor)
+#str(p4.data)
+
+res2_P4 <- rcorr(as.matrix(p4.data), type = c("spearman"))
+
+# Extract the correlation coefficients
+res2_P4$r
+# Extract p-values
+res2_P4$P
+```
+
+## P4 ALL variables correlation matrix
+
+```{r p4 corrvis}
+# "Insignificant" (p < .1) correlation are blank
+corrplot(res2_P4$r, type="upper", order="original", tl.col = "black", tl.srt = 45,tl.cex = .45,
+         p.mat = res2_P4$P, sig.level = 0.1, insig = "blank")
+```
+
+## Dealing with missing data
+  
+### Identify percent missing from each dataset
+  
+```{r percent missing}
+#Phase 4
+colMeans(is.na(p4.df)*100)
+#CT interruption paradigm has high percent missing at 40%
+
+#entire df
+sum(is.na(p4.df))/prod(dim(p4.df))
+```
+
+### Imputing missing data
+```{r random forest missing data}
+#Imputation without interruption paradigm data - worse imputation when using IP variables as predictors.
+set.seed(55)
+m2 <- missRanger(p4.df, formula = .
+                   ~ . , pmm.k = 3, num.trees = 10000, 
+                returnOOB = TRUE,
+                verbose = 2)
+attr(m2, "oob") #out of bag error
+```
+
+```{r mice for missing data, results = 'hide'}
+#training set
+init = mice(p4.df, maxit=0) #Excludes latency variables from imputation
+meth = init$method
+predM = init$predictorMatrix
+
+predM[,c("PR_ReEng_Proportion_P4", "PR_P_Passive_P4",
+         "FT_ReEng_Proportion_P4", "FT_Passive_Proportion_P4",
+         "CT_ReEng_Proportion_P4", "CT_P_Passive_P4")] = 0 #Variables with high % missing - excluded as predictors
+
+#Variables that may be too highly correlated?
+#"Avg_Succ_PR_P4", "Avg_Succ_CT_P4", "Avg_Succ_FT_P4","Avg_SC_CT_P4", "Avg_SC_FT_P4"
+
+#meth[c("MBWG_totgest_p3_calc", "P3_TOTAL_avpredblockoutoftrials", 
+      # "book_IJAsum_prop_incl_extIJA_P3", "ring_IJAsum_incl_extIJA_nocrit_P3", 
+       #"PR_ReEng_Proportion_P3","PR_Diseng_Proportion_P3", "FT_ReEng_Proportion_P3",
+       #"FT_Diseng_Proportion_P3")]="pmm" #imputation via predictive mean matching
+
+set.seed(103)
+imputed = mice(p4.df, m=15, method = meth, predictorMatrix = predM, maxit = 10, print = FALSE)
+```
+
+```{r model diagnostics}
+summary(imputed)
+plot(imputed)
+imputed$loggedEvents
+```
+
+
+```{r}
+library(lavaan)
+#Full model that I would like to run
+p4.coop.model <- ' 
+CU  =~ Anticipation_P3 + PR_ReEng_Proportion_P4 + CT_ReEng_Proportion_P4 + FT_ReEng_Proportion_P4 
+CA =~ Avg_SC_PR_P4 + Avg_SC_CT_P4 + Avg_SC_FT_P4 + Avg_Succ_PR_P4 + Avg_Succ_CT_P4 + Avg_Succ_FT_P4
+CM =~ PR_P_Passive_P4 + CT_P_Passive_P4 + FT_Passive_Proportion_P4 + CoMotiv_p4
+CIQ =~ PR_Afill_P4 + CT_Afill_P4 + FT_Afill_P4 + PR_Antag_P4 + CT_Antag_P4  + FT_Antag_P4 '
+
+
+```
+
+
+```{r}
+#Reduced model because Succ and SC (spatial coordination) too highly correlated possibly?
+sem.model <- ' 
+CU  =~ Anticipation_P3 + PR_ReEng_Proportion_P4 + CT_ReEng_Proportion_P4 + FT_ReEng_Proportion_P4 
+CA =~ Avg_Succ_PR_P4 + Avg_Succ_CT_P4 + Avg_Succ_FT_P4
+CM =~ PR_P_Passive_P4 + CT_P_Passive_P4 + FT_Passive_Proportion_P4 + CoMotiv_p4
+CIQ =~ PR_Afill_P4 + CT_Afill_P4 + FT_Afill_P4 + PR_Antag_P4 + CT_Antag_P4  + FT_Antag_P4 
+'
+```
+
+
+```{r}
+#multiple imputations model - full model with potentially correlated variables
+fit.ip <- cfa.mi(p4.coop.model, imputed, fun = "cfa", estimator = "wlsmv")
+
+#multiple imputations model - reduced model (Succ only, removed SC as too correlated?)
+fit.ip.red <- cfa.mi(sem.model, imputed, fun = "cfa", estimator = "wlsmv")
+
+
+?fit <- cfa(p4.coop.model, data = m2, ordered=c("Avg_SC_PR_P4","Avg_SC_FT_P4",
+                     "Avg_Succ_PR_P4","Avg_Succ_FT_P4", "PR_Afill_P4", "PR_Antag_P4",
+                     "FT_Afill_P4","FT_Antag_P4", "Avg_SC_CT_P4", "Avg_Succ_CT_P4", "CoMotiv_p4")) # Not sure what to make ordered?
+```
+
+
+```{r EFA}
+p4.df1 <- subset(m2, select = c("Anticipation_P3", 
+                                  "Avg_SC_PR_P4", "Avg_Succ_PR_P4", "Avg_SC_FT_P4", 
+                                       "Avg_Succ_FT_P4", "Avg_SC_CT_P4", 
+                                       "Avg_Succ_CT_P4", "PR_Afill_P4",
+                                     "PR_Antag_P4", "CT_Afill_P4",
+                                     "CT_Antag_P4", "FT_Afill_P4", "FT_Antag_P4",
+                                  "PR_ReEng_Proportion_P4",
+                                       "PR_P_Passive_P4", "FT_ReEng_Proportion_P4", 
+                                       "FT_Passive_Proportion_P4", "CT_ReEng_Proportion_P4", 
+                                       "CT_P_Passive_P4", "CoMotiv_p4"))
+
+
+hcor <- hetcor(p4.df1, ML = FALSE)
+# Get the correlation matrix of the hcorl.
+sdt_polychoric <- hcor$correlations
+
+# Apply the Bartlett test on the correlation matrix.
+cortest.bartlett(sdt_polychoric)
+KMO(sdt_polychoric)
+scree(sdt_polychoric)
+fa.parallel(sdt_polychoric, n.obs = 100, fa = "fa")
+fa(sdt_polychoric, fm = "wls", nfactors = 7)
+```
+
+
+
+# PARCEL VARIABLES AND ADD IN MAR VARIABLES
+
+1.) make new data file with original variable scoring !
+2.) calculate parcels !
+3.) view distributions !
+4.) impute data
+5.) SEM
+
+```{r parcel data import, include = FALSE}
+parcel.data <- read.csv("Parcel.Data.csv", stringsAsFactors = FALSE)
+parcel.data[parcel.data == 999] <- NA
+parcel.data[parcel.data == 777] <- NA
+parcel.data[parcel.data == 888] <- NA
+```
+
+## Variable Scoring
+
+```{r parcel scoring}
+#Cooperative Understanding 
+parcel.data$Reeng_Behav <- rowMeans(subset(parcel.data, 
+                                            select = c("PR_ReEng_Proportion_P4", 
+                                                       "CT_ReEng_Proportion_P4", 
+                                                       "FT_ReEng_Proportion_P4")), na.rm = TRUE)
+#Cooperative Ability
+parcel.data$SC_Behav <- rowMeans(subset(parcel.data, 
+                                            select = c("SC_R1_PR_P4", 
+                                                       "SC_R2_PR_P4", 
+                                                       "SC_R1_CT_P4", 
+                                                       "SC_R2_CT_P4",
+                                                       "SC_R1_FT_P4", 
+                                                       "SC_R2_FT_P4")), na.rm = TRUE)
+
+parcel.data$Succ_Behav <- rowMeans(subset(parcel.data, 
+                                            select = c("Succ_R1_PR_P4", 
+                                                       "Succ_R2_PR_P4", 
+                                                       "Succ_R1_CT_P4", 
+                                                       "Succ_R2_CT_P4",
+                                                       "Succ_R1_FT_P4", 
+                                                       "Succ_R2_FT_P4")), na.rm = TRUE)
+parcel.data$Lat_Behav <- rowMeans(subset(parcel.data, 
+                                            select = c("LatA1_PR_T1_P4",
+                                                       "LatA2_PR_T1_P4",
+                                                       "LatA1_PR_T2_P4",
+                                                       "LatA2_PR_T2_P4",
+                                                       "LatA1_CT_T1_P4",
+                                                       "LatA2_CT_T1_P4",
+                                                       "LatA1_CT_T2_P4",
+                                                       "LatA2_CT_T2_P4",
+                                                       "LatA1_FT_T1_P4",
+                                                       "LatA2_FT_T1_P4",
+                                                       "LatA1_FT_T2_P4",
+                                                       "LatA2_FT_T2_P4")), na.rm = TRUE)
+#Cooperative Motivation
+parcel.data$Waiting_Behav <- rowMeans(subset(parcel.data, 
+                                            select = c("PR_Passive_Proportion_P4", 
+                                                       "CT_Passive_Proportion_P4", 
+                                                       "FT_Passive_Proportion_P4")), na.rm = TRUE)
+parcel.data$Eng_Behav <- rowMeans(subset(parcel.data, 
+                                            select = c("CT_T1_Eng_Final",
+                                                       "CT_T2_Eng_Final",
+                                                       "PR_T1_Eng_Final",
+                                                       "PR_T2_Eng_Final",
+                                                       "CR_T1_Eng_Final",
+                                                       "CR_T2_Eng_Final")), na.rm = TRUE)
+#Cooperative Interaction Quality
+parcel.data$Afill_Behav <- rowMeans(subset(parcel.data, 
+                                            select = c("CT_T1_Afill_Final",
+                                                       "CT_T2_Afill_Final",
+                                                       "PR_T1_Afill_Final",
+                                                       "PR_T2_Afill_Final",
+                                                       "CR_T1_Afill_Final",
+                                                       "CR_T2_Afill_Final")), na.rm = TRUE)
+parcel.data$Antag_Behav <- rowMeans(subset(parcel.data, 
+                                            select = c("CT_T1_Antag_Final",
+                                                       "CT_T2_Antag_Final",
+                                                       "PR_T1_Antag_Final",
+                                                       "PR_T2_Antag_Final",
+                                                       "CR_T1_Antag_Final",
+                                                       "CR_T2_Antag_Final")), na.rm = TRUE)
+parcel.data$JCE_Behav <- rowMeans(subset(parcel.data, 
+                                            select = c("CT_T1_JCE_Final",
+                                                       "CT_T2_JCE_Final",
+                                                       "PR_T1_JCE_Final",
+                                                       "PR_T2_JCE_Final",
+                                                       "CR_T1_JCE_Final",
+                                                       "CR_T2_JCE_Final")), na.rm = TRUE)
+
+```
+
+```{r parcel study in dataframe}
+par.df <- parcel.data[which(parcel.data$Study_inout == 1),]
+```
+
+```{r parcel main df outliers windsorized, results = 'hide'}
+
+#Waiting
+par.df$Waiting_Behav <- Winsorize(par.df$Waiting_Behav, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+#Reeng
+par.df$Reeng_Behav <- Winsorize(par.df$Reeng_Behav, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+
+#SC
+par.df$SC_Behav <- Winsorize(par.df$SC_Behav, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+#Succ
+par.df$Succ_Behav <- Winsorize(par.df$Succ_Behav, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+
+#Lat
+par.df$Lat_Behav <- Winsorize(par.df$Lat_Behav, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+
+#Eng
+par.df$Eng_Behav <- Winsorize(par.df$Eng_Behav, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+
+#Afill
+par.df$Afill_Behav <- Winsorize(par.df$Afill_Behav, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+
+#Antag
+par.df$Antag_Behav <- Winsorize(par.df$Antag_Behav, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+
+#JCE
+par.df$JCE_Behav <- Winsorize(par.df$JCE_Behav, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+
+#Anticipation
+par.df$Anticipation_P3 <- Winsorize(par.df$Anticipation_P3, probs = c(0.05, 0.95),
+          na.rm = TRUE, type = 7)
+
+
+
+par.df$CoMotiv_p4[par.df$CoMotiv_p4 == 4] <- 3
+par.df$CoMotiv_p4 <- factor(par.df$CoMotiv_p4, ordered = TRUE)
+```
+
+
+```{r parcel reeng behaviour descriptives}
+with(par.df, hist(Reeng_Behav,breaks = 20,
+                   xlab = "",
+                   main = ""))
+mean(par.df$Reeng_Behav, na.rm = TRUE)
+sd(par.df$Reeng_Behav, na.rm = TRUE)
+range(par.df$Reeng_Behav, na.rm = TRUE)
+```
+
+```{r parcel waiting behaviour descriptives}
+with(par.df, hist(Waiting_Behav,breaks = 20,
+                   xlab = "",
+                   main = ""))
+mean(par.df$Waiting_Behav, na.rm = TRUE)
+sd(par.df$Waiting_Behav, na.rm = TRUE)
+range(par.df$Waiting_Behav, na.rm = TRUE)
+```
+
+
+```{r parcel sc behaviour descriptives}
+with(par.df, hist(SC_Behav,breaks = 5,
+                   xlab = "",
+                   main = ""))
+mean(par.df$SC_Behav, na.rm = TRUE)
+sd(par.df$SC_Behav, na.rm = TRUE)
+range(par.df$SC_Behav, na.rm = TRUE)
+```
+
+```{r parcel Succ behaviour descriptives}
+with(par.df, hist(Succ_Behav,breaks = 10,
+                   xlab = "",
+                   main = ""))
+mean(par.df$Succ_Behav, na.rm = TRUE)
+sd(par.df$Succ_Behav, na.rm = TRUE)
+range(par.df$Succ_Behav, na.rm = TRUE)
+```
+
+```{r parcel Lat behaviour descriptives}
+with(par.df, hist(Lat_Behav,breaks = 20,
+                   xlab = "",
+                   main = ""))
+mean(par.df$Lat_Behav, na.rm = TRUE)
+sd(par.df$Lat_Behav, na.rm = TRUE)
+range(par.df$Lat_Behav, na.rm = TRUE)
+```
+
+```{r parcel Eng behaviour descriptives}
+with(par.df, hist(Eng_Behav,breaks = 20,
+                   xlab = "",
+                   main = ""))
+mean(par.df$Eng_Behav, na.rm = TRUE)
+sd(par.df$Eng_Behav, na.rm = TRUE)
+range(par.df$Eng_Behav, na.rm = TRUE)
+```
+
+```{r parcel Afill behaviour descriptives}
+with(par.df, hist(Afill_Behav,breaks = 10,
+                   xlab = "",
+                   main = ""))
+mean(par.df$Afill_Behav, na.rm = TRUE)
+sd(par.df$Afill_Behav, na.rm = TRUE)
+range(par.df$Afill_Behav, na.rm = TRUE)
+```
+
+```{r parcel Antag behaviour descriptives}
+with(par.df, hist(Antag_Behav,breaks = 10,
+                   xlab = "",
+                   main = ""))
+mean(par.df$Antag_Behav, na.rm = TRUE)
+sd(par.df$Antag_Behav, na.rm = TRUE)
+range(par.df$Antag_Behav, na.rm = TRUE)
+```
+
+```{r parcel JCE behaviour descriptives}
+with(par.df, hist(JCE_Behav,breaks = 20,
+                   xlab = "",
+                   main = ""))
+mean(par.df$JCE_Behav, na.rm = TRUE)
+sd(par.df$JCE_Behav, na.rm = TRUE)
+range(par.df$JCE_Behav, na.rm = TRUE)
+```
+
+```{r parcel main dataframe selection}
+#Subset for main dataframe analyses (without level assignments)
+
+ss.par.df <- subset(par.df, select = c("Gender", "Age_P4", "Anticipation_P3", 
+                                       "CoMotiv_p4", "Waiting_Behav","Reeng_Behav",
+                                       "SC_Behav","Succ_Behav","Lat_Behav","Eng_Behav", 
+                                       "Afill_Behav","Antag_Behav","JCE_Behav"))
+```
+
+```{r parcel data percent missing}
+
+colMeans(is.na(ss.par.df)*100)
+#CT interruption paradigm has high percent missing at 40%
+
+#entire df
+sum(is.na(ss.par.df))/prod(dim(ss.par.df))
+```
+
+### Imputing missing data
+```{r parcel random forest missing data}
+#Imputation without interruption paradigm data - worse imputation when using IP variables as predictors.
+set.seed(4322)
+parcel.forest.imp <- missRanger(ss.par.df, formula = .
+                   ~ . , pmm.k = 3, num.trees = 10000, 
+                returnOOB = TRUE,
+                verbose = 2)
+attr(parcel.forest.imp, "oob") #out of bag error
+```
+
+```{r parcel data mice for missing data, results = 'hide'}
+#training set
+init = mice(ss.par.df, maxit=0) #Excludes latency variables from imputation
+meth = init$method
+predM = init$predictorMatrix
+
+#predM[,c("Waiting_Behav", "Reeng_Behav")] = 0 #Variables with high % missing - excluded as predictors
+
+
+set.seed(103)
+imputed = mice(ss.par.df, m=10, method = meth, predictorMatrix = predM, maxit = 10, print = FALSE)
+```
+
+```{r parceled model diagnostics}
+summary(imputed)
+plot(imputed)
+imputed$loggedEvents
+```
+
+```{r parcel model CFA}
+parcel.cfa.model <- ' 
+CU  =~ Anticipation_P3 + Reeng_Behav 
+CA =~  Lat_Behav + SC_Behav + Succ_Behav 
+CM =~ CoMotiv_p4 + Eng_Behav + Waiting_Behav
+CIQ =~ JCE_Behav + Afill_Behav + Antag_Behav 
+'
+```
+
+```{r parcel model SEM}
+parcel.sem.model <- ' 
+CU  =~ Anticipation_P3 + Reeng_Behav 
+CA =~  Lat_Behav + SC_Behav + Succ_Behav 
+CM =~ CoMotiv_p4 + Eng_Behav + Waiting_Behav
+CIQ =~ JCE_Behav + Afill_Behav + Antag_Behav 
+
+Waiting_Behav~~Antag_Behav
+CoMotiv_p4~~Antag_Behav
+CoMotiv_p4~~Waiting_Behav
+
+'
+```
+
+```{r}
+#multiple imputations model - full model with potentially correlated variables
+parcel.cfa <- cfa.mi(parcel.cfa.model, imputed, fun = "cfa", estimator = "wlsmv")
+
+rf.parcel.cfa <- cfa(model = parcel.cfa.model, data = parcel.forest.imp)
+
+mice.sem <- sem.mi(parcel.sem.model, imputed, fun = "sem", estimator = "wlsmv")
+
+rfp.sem <- sem(model = parcel.sem.model, data = parcel.forest.imp)
+lavaanPlot(name = "plot", model = rfp.sem, coefs = TRUE, sig = .05, covs = TRUE)
+semPaths(rfp.sem, title = FALSE, curvePivot = TRUE)
+
+```
